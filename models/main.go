@@ -8,7 +8,7 @@ type Namespace struct {
 type Document struct {
 	Key         string   `json:"key"`
 	Ordinal     int      `json:"ordinal"`
-	NamespaceId string   `json:"namespaceId"`
+	NamespaceId string   `json:"namespace"`
 	Policies    []Policy `json:"policies"`
 }
 
@@ -18,8 +18,23 @@ type Policy struct {
 	Rule         string `json:"rule"`
 }
 
-type EngineRequest struct {
-	Principal string         `json:"principal"`
-	Resource  string         `json:"resource"`
-	Context   map[string]any `json:"context"`
+type GetPermissionsRequest struct {
+	NamespaceId string         `json:"namespace"`
+	PrincipalId string         `json:"principal"`
+	ResourceId  string         `json:"resource"`
+	Context     map[string]any `json:"context"`
+	Policies    []Policy       `json:"policies"`
+}
+
+type EngineRequestOptions struct {
+	PrincipalId string
+	Principal   map[string]any
+
+	ResourceId string
+	Resource   map[string]any
+
+	Context map[string]any
+	Perms   []string
+	Rel     func(string) bool
+	Full    func(string, string) bool
 }
