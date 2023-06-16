@@ -1,0 +1,7 @@
+[
+  {
+    "resourceType": "*",
+    "action": "*",
+    "rule": "full('member', 'group:admin')"
+  }
+]
