@@ -3,6 +3,7 @@ package openfga
 import (
 	"context"
 	"fmt"
+	"github.com/belkonar/policies/models"
 	fga "github.com/openfga/go-sdk"
 )
 
@@ -10,10 +11,10 @@ type FgaClient struct {
 	Configuration *fga.Configuration
 }
 
-func (f *FgaClient) CheckRelation(storeId string, user string, relation string, object string) bool {
+func (f *FgaClient) CheckRelation(namespace models.Namespace, user string, relation string, object string) bool {
 	client := fga.NewAPIClient(f.Configuration)
 
-	client.SetStoreId(storeId)
+	client.SetStoreId(namespace.FgaStore)
 
 	request := fga.CheckRequest{
 		TupleKey: fga.TupleKey{

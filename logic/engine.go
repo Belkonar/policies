@@ -3,7 +3,6 @@ package logic
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/allegro/bigcache/v3"
 	"github.com/antonmedv/expr"
@@ -19,7 +18,7 @@ type Engine struct {
 	Fga        *openfga.FgaClient
 }
 
-func (e *Engine) MakeRequest(permissionsRequest models.GetPermissionsRequest) map[string]any {
+func (e *Engine) MakeRequest(permissionsRequest models.GetPermissionsRequest) (map[string]any, models.Namespace, error) {
 	if permissionsRequest.Context == nil {
 		permissionsRequest.Context = make(map[string]any)
 	}
@@ -27,7 +26,7 @@ func (e *Engine) MakeRequest(permissionsRequest models.GetPermissionsRequest) ma
 	namespace, err := e.GetNamespace(permissionsRequest.NamespaceId)
 
 	if err != nil {
-		return nil
+		return nil, namespace, err
 	}
 
 	local := permissionsRequest.Context
@@ -36,7 +35,7 @@ func (e *Engine) MakeRequest(permissionsRequest models.GetPermissionsRequest) ma
 	local["resourceId"] = permissionsRequest.ResourceId
 	local["storeId"] = namespace.FgaStore
 
-	return local
+	return local, namespace, nil
 }
 
 // GetNamespace Make this a background cached item to put storeIds in cache
@@ -204,20 +203,13 @@ func (e *Engine) RefreshPolicyCache(namespace string) error {
 }
 
 // Execute takes a request and a policy and returns a list of actions that are allowed
-func (e *Engine) Execute(request map[string]any, policy []models.Policy) ([]string, error) {
-	storeId := ""
-	if request["storeId"] != nil {
-		storeId = request["storeId"].(string)
-	} else {
-		return nil, errors.New("storeId is required")
-	}
-
+func (e *Engine) Execute(request map[string]any, namespace models.Namespace, policy []models.Policy) ([]string, error) {
 	request["rel"] = func(s string) bool {
-		return e.Fga.CheckRelation(storeId, request["principalId"].(string), s, request["resourceId"].(string))
+		return e.Fga.CheckRelation(namespace, request["principalId"].(string), s, request["resourceId"].(string))
 	}
 
 	request["full"] = func(s string, object string) bool {
-		return e.Fga.CheckRelation(storeId, request["principalId"].(string), s, object)
+		return e.Fga.CheckRelation(namespace, request["principalId"].(string), s, object)
 	}
 
 	perms := make([]string, 0)
@@ -274,7 +266,13 @@ func (e *Engine) ProcessEngineRequest(request models.GetPermissionsRequest) ([]s
 		fmt.Println(err)
 	}
 
-	perms, err := e.Execute(e.MakeRequest(request), policies)
+	req, namespace, err := e.MakeRequest(request)
+
+	if err != nil {
+		return nil, err
+	}
+
+	perms, err := e.Execute(req, namespace, policies)
 
 	if err != nil {
 		return nil, err
